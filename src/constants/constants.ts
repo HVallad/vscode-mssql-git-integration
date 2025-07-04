@@ -98,6 +98,7 @@ export const cmdClearAzureTokenCache = "mssql.clearAzureAccountTokenCache";
 export const cmdShowExecutionPlanInResults = "mssql.showExecutionPlanInResults";
 export const cmdEnableActualPlan = "mssql.enableActualPlan";
 export const cmdDisableActualPlan = "mssql.disableActualPlan";
+export const cmdSyncWithGit = "mssql.syncWithGit";
 export const cmdNewTable = "mssql.newTable";
 export const cmdEditTable = "mssql.editTable";
 export const cmdEditConnection = "mssql.editConnection";

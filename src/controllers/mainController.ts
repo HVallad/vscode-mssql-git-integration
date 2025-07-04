@@ -297,6 +297,11 @@ export default class MainController implements vscode.Disposable {
             this._event.on(Constants.cmdDisableActualPlan, () => {
                 this.onToggleActualPlan(false);
             });
+            
+            this.registerCommandWithArgs(Constants.cmdSyncWithGit);
+            this._event.on(Constants.cmdSyncWithGit, (treeNodeInfo: TreeNodeInfo) => {
+                void this.onSyncWithGit(treeNodeInfo);
+            });
 
             this._context.subscriptions.push(
                 vscode.languages.registerCodeLensProvider(
@@ -2817,6 +2822,26 @@ export default class MainController implements vscode.Disposable {
 
     public onClearAzureTokenCache(): void {
         this.connectionManager.onClearTokenCache();
+    }
+
+    /**
+     * Handler for the Sync with Git command
+     * @param treeNodeInfo The database node that was clicked
+     */
+    public async onSyncWithGit(treeNodeInfo: TreeNodeInfo): Promise<void> {
+        if (!treeNodeInfo || !treeNodeInfo.connectionProfile) {
+            return;
+        }
+
+        // Get the database name from the node
+        const databaseName = ObjectExplorerUtils.getDatabaseName(treeNodeInfo);
+        if (!databaseName || databaseName === LocalizedConstants.defaultDatabaseLabel) {
+            void vscode.window.showErrorMessage('Please select a valid database to sync with Git.');
+            return;
+        }
+
+        // TODO: Implement Git sync functionality
+        void vscode.window.showInformationMessage(`Sync with Git for database '${databaseName}' will be implemented in a future update.`);
     }
 
     private ExecutionPlanCustomEditorProvider = class implements vscode.CustomTextEditorProvider {

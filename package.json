@@ -520,6 +520,11 @@
                     "group": "2_MSSQL_serverDbActions@2"
                 },
                 {
+                    "command": "mssql.syncWithGit",
+                    "when": "view == objectExplorer && viewItem =~ /\\btype=(Database)\\b.*\\bsubType=(Database)\\b/",
+                    "group": "2_MSSQL_serverDbActions@3"
+                },
+                {
                     "command": "mssql.scriptSelect",
                     "when": "view == objectExplorer && viewItem =~  /\\btype=(Table|View)\\b/",
                     "group": "3_MSSQL_script@1"
@@ -834,21 +839,6 @@
                 "category": "MS SQL"
             },
             {
-                "command": "mssql.clearPooledConnections",
-                "title": "%mssql.clearPooledConnections%",
-                "category": "MS SQL"
-            },
-            {
-                "command": "mssql.chooseDatabase",
-                "title": "%mssql.chooseDatabase%",
-                "category": "MS SQL"
-            },
-            {
-                "command": "mssql.chooseLanguageFlavor",
-                "title": "%mssql.chooseLanguageFlavor%",
-                "category": "MS SQL"
-            },
-            {
                 "command": "mssql.showGettingStarted",
                 "title": "%mssql.showGettingStarted%",
                 "category": "MS SQL"
@@ -946,6 +936,27 @@
                 "category": "MS SQL"
             },
             {
+                "command": "mssql.clearPooledConnections",
+                "title": "%mssql.clearPooledConnections%",
+                "category": "MS SQL"
+            },
+            {
+                "command": "mssql.chooseDatabase",
+                "title": "%mssql.chooseDatabase%",
+                "category": "MS SQL"
+            },
+            {
+                "command": "mssql.syncWithGit",
+                "title": "Sync with Git",
+                "category": "MS SQL",
+                "icon": "$(git-merge)"
+            },
+            {
+                "command": "mssql.scriptDelete",
+                "title": "%mssql.scriptDelete%",
+                "category": "MS SQL"
+            },
+            {
                 "command": "mssql.scriptSelect",
                 "title": "%mssql.scriptSelect%",
                 "category": "MS SQL"
@@ -953,11 +964,6 @@
             {
                 "command": "mssql.scriptCreate",
                 "title": "%mssql.scriptCreate%",
-                "category": "MS SQL"
-            },
-            {
-                "command": "mssql.scriptDelete",
-                "title": "%mssql.scriptDelete%",
                 "category": "MS SQL"
             },
             {
