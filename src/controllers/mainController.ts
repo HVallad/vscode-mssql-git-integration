@@ -2950,6 +2950,10 @@ export default class MainController implements vscode.Disposable {
                 `Git Sync Query - ${databaseName}`
             );
 
+            // Close the editor immediately after starting the query to hide the untitled document
+            await vscode.window.showTextDocument(doc, { preview: false, preserveFocus: false });
+            await vscode.commands.executeCommand("workbench.action.revertAndCloseActiveEditor");
+
             // Wait for the results and convert to JSON
             const jsonResults = await queryResultsPromise;
 
