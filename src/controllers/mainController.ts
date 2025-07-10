@@ -55,7 +55,7 @@ import { QueryResultWebviewController } from "../queryResult/queryResultWebViewC
 import { MssqlProtocolHandler } from "../mssqlProtocolHandler";
 import { getErrorMessage, isIConnectionInfo } from "../utils/utils";
 import { getStandardNPSQuestions, UserSurvey } from "../nps/userSurvey";
-import { ExecutionPlanOptions } from "../models/contracts/queryExecute";
+import { ExecutionPlanOptions, QueryExecuteParams, QueryExecuteSubsetRequest } from "../models/contracts/queryExecute";
 import { ObjectExplorerDragAndDropController } from "../objectExplorer/objectExplorerDragAndDropController";
 import { SchemaDesignerService } from "../services/schemaDesignerService";
 import store, { SubKeys } from "../queryResult/singletonStore";
@@ -84,6 +84,7 @@ import {
 } from "../containerDeployment/dockerUtils";
 import { StateChangeNotification } from "../sharedInterfaces/webview";
 import { QueryResultWebviewState } from "../sharedInterfaces/queryResult";
+import QueryRunner from "./queryRunner";
 
 /**
  * The main controller class that initializes the extension
@@ -297,7 +298,7 @@ export default class MainController implements vscode.Disposable {
             this._event.on(Constants.cmdDisableActualPlan, () => {
                 this.onToggleActualPlan(false);
             });
-            
+
             this.registerCommandWithArgs(Constants.cmdSyncWithGit);
             this._event.on(Constants.cmdSyncWithGit, (treeNodeInfo: TreeNodeInfo) => {
                 void this.onSyncWithGit(treeNodeInfo);
@@ -2836,12 +2837,134 @@ export default class MainController implements vscode.Disposable {
         // Get the database name from the node
         const databaseName = ObjectExplorerUtils.getDatabaseName(treeNodeInfo);
         if (!databaseName || databaseName === LocalizedConstants.defaultDatabaseLabel) {
-            void vscode.window.showErrorMessage('Please select a valid database to sync with Git.');
+            void vscode.window.showErrorMessage("Please select a valid database to sync with Git.");
             return;
         }
 
-        // TODO: Implement Git sync functionality
-        void vscode.window.showInformationMessage(`Sync with Git for database '${databaseName}' will be implemented in a future update.`);
+        // Create a URI for a fake editorless connection
+        const connectionProfile = treeNodeInfo.connectionProfile;
+        connectionProfile.database = databaseName;
+        const uri = `untitled:query_${databaseName}_${Date.now()}`;
+
+        const connected = await this.connectionManager.connect(uri, connectionProfile);
+        if (!connected) {
+            vscode.window.showErrorMessage(`Failed to connect to database: ${databaseName}`);
+            return;
+        }
+
+        const query = `SELECT name, type_desc FROM sys.objects WHERE type IN ('P', 'V', 'U')`;
+
+        const queryRunner = this._outputContentProvider.getQueryRunner(uri);
+        if (!queryRunner) {
+            console.log('No query runner available for URI:', uri);
+        }
+
+        try {
+            // Create an untitled document with the query content
+            const doc = await vscode.workspace.openTextDocument({
+                language: "sql",
+                content: query
+            });
+
+            // Transfer the connection to the document's actual URI
+            const actualUri = doc.uri.toString(true);
+            await this._connectionMgr.copyConnectionToFile(uri, actualUri);
+
+            // Create selection covering the entire query
+            const selection: ISelectionData = {
+                startLine: 0,
+                startColumn: 0,
+                endLine: doc.lineCount - 1,
+                endColumn: doc.lineAt(doc.lineCount - 1).text.length
+            };
+
+            // Create a promise to capture the query results
+            const queryResultsPromise = new Promise<any[]>((resolve, reject) => {
+                // Get the query runner for the actual URI (after document creation)
+                const queryRunner = this._outputContentProvider.getQueryRunner(actualUri);
+                if (!queryRunner) {
+                    reject(new Error('No query runner available'));
+                    return;
+                }
+
+                // Hook into the query completion event
+                queryRunner.eventEmitter.once('complete', async (executionTime: string, hasError: boolean) => {
+                    if (hasError) {
+                        reject(new Error('Query execution failed'));
+                        return;
+                    }
+
+                    try {
+                        // Get the batch summaries from the completed query
+                        const batchSets = (queryRunner as any)._batchSets;
+                        const results: any[] = [];
+
+                        // Process each batch and result set
+                        for (let batchIndex = 0; batchIndex < batchSets.length; batchIndex++) {
+                            const batch = batchSets[batchIndex];
+
+                            for (let resultSetIndex = 0; resultSetIndex < batch.resultSetSummaries.length; resultSetIndex++) {
+                                const resultSet = batch.resultSetSummaries[resultSetIndex];
+
+                                if (resultSet.rowCount > 0) {
+                                    // Fetch all rows for this result set
+                                    const rowData = await queryRunner.getRows(0, resultSet.rowCount, batchIndex, resultSetIndex);
+
+                                    if (rowData && rowData.resultSubset && rowData.resultSubset.rows) {
+                                        // Convert rows to JSON objects using column info
+                                        const jsonRows = rowData.resultSubset.rows.map(row => {
+                                            const jsonRow: any = {};
+                                            resultSet.columnInfo.forEach((column, colIndex) => {
+                                                jsonRow[column.columnName] = row[colIndex]?.displayValue || null;
+                                            });
+                                            return jsonRow;
+                                        });
+
+                                        results.push({
+                                            batchIndex,
+                                            resultSetIndex,
+                                            rowCount: resultSet.rowCount,
+                                            columns: resultSet.columnInfo.map(col => ({
+                                                name: col.columnName,
+                                                type: col.dataTypeName
+                                            })),
+                                            rows: jsonRows
+                                        });
+                                    }
+                                }
+                            }
+                        }
+
+                        resolve(results);
+                    } catch (error) {
+                        reject(error);
+                    }
+                });
+            });
+
+            // Run the query in the background
+            await this._outputContentProvider.runQuery(
+                this._statusview,
+                actualUri,
+                selection,
+                `Git Sync Query - ${databaseName}`
+            );
+
+            // Wait for the results and convert to JSON
+            const jsonResults = await queryResultsPromise;
+
+            // Log the JSON results to console (you can modify this to do whatever you want with the data)
+            console.log('Query Results as JSON:', JSON.stringify(jsonResults, null, 2));
+
+            void vscode.window.showInformationMessage(
+                `Background query executed for database '${databaseName}'. Results captured as JSON (${jsonResults.length} result sets).`
+            );
+
+        } catch (error) {
+            void vscode.window.showErrorMessage(
+                `Failed to execute background query for database '${databaseName}': ${error.message || error}`
+            );
+        }
     }
 
     private ExecutionPlanCustomEditorProvider = class implements vscode.CustomTextEditorProvider {
