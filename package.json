@@ -2066,6 +2066,14 @@
                     "description": "How frequently (in minutes) to automatically check for database changes and update the cache",
                     "scope": "window"
                 },
+                "mssql.localCache.batchSize": {
+                    "type": "number",
+                    "default": 10,
+                    "minimum": 1,
+                    "maximum": 100,
+                    "description": "Number of database objects to script concurrently during cache operations. Higher values may improve performance but use more memory and network resources.",
+                    "scope": "window"
+                },
                 "mssql.gitIntegration.autoRefreshCacheOnDDL": {
                     "type": "boolean",
                     "default": true,

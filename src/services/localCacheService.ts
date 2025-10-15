@@ -68,6 +68,7 @@ export class LocalCacheService implements vscode.Disposable {
     private _isEnabled: boolean = true;
     private _autoRefreshEnabled: boolean = true;
     private _autoRefreshIntervalMinutes: number = 15;
+    private _batchSize: number = 10;
 
     // Map of connection hash to refresh timer info
     private _refreshTimers: Map<string, RefreshTimerInfo> = new Map();
@@ -108,6 +109,7 @@ export class LocalCacheService implements vscode.Disposable {
         this._isEnabled = config.get<boolean>("enabled", true);
         this._autoRefreshEnabled = config.get<boolean>("autoRefreshEnabled", true);
         this._autoRefreshIntervalMinutes = config.get<number>("autoRefreshIntervalMinutes", 15);
+        this._batchSize = config.get<number>("batchSize", 10);
 
         // Validate interval
         if (this._autoRefreshIntervalMinutes < 1) {
@@ -116,8 +118,15 @@ export class LocalCacheService implements vscode.Disposable {
             this._autoRefreshIntervalMinutes = 300;
         }
 
+        // Validate batch size
+        if (this._batchSize < 1) {
+            this._batchSize = 1;
+        } else if (this._batchSize > 100) {
+            this._batchSize = 100;
+        }
+
         this._client.logger.info(
-            `[LocalCache] Configuration updated - enabled: ${this._isEnabled}, autoRefreshEnabled: ${this._autoRefreshEnabled}, interval: ${this._autoRefreshIntervalMinutes} minutes`,
+            `[LocalCache] Configuration updated - enabled: ${this._isEnabled}, autoRefreshEnabled: ${this._autoRefreshEnabled}, interval: ${this._autoRefreshIntervalMinutes} minutes, batchSize: ${this._batchSize}`,
         );
     }
 
@@ -757,7 +766,12 @@ export class LocalCacheService implements vscode.Disposable {
 
             // Phase 1: Script all objects in batches
             progress?.report({ message: "Scripting database objects..." });
-            const scripts = await this.scriptObjectsBatch(ownerUri, objects, 10, progress);
+            const scripts = await this.scriptObjectsBatch(
+                ownerUri,
+                objects,
+                this._batchSize,
+                progress,
+            );
 
             // Phase 2: Save all scripts to disk
             progress?.report({ message: "Saving scripts to disk..." });
@@ -860,7 +874,7 @@ export class LocalCacheService implements vscode.Disposable {
                 const scripts = await this.scriptObjectsBatch(
                     ownerUri,
                     objectsToUpdate,
-                    10,
+                    this._batchSize,
                     progress,
                 );
 
