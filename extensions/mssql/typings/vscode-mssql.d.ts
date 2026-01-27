@@ -1935,16 +1935,31 @@ declare module "vscode-mssql" {
     }
 
     /**
+     * Result from a context contributor
+     */
+    export interface IContextContribution {
+        /**
+         * Additional context properties to merge into the node's contextValue.
+         * These can be used in `when` clauses for menu visibility.
+         */
+        contextProperties?: Record<string, string | boolean>;
+        /**
+         * Optional description to display next to the node label.
+         * This appears in a lighter color to the right of the label.
+         */
+        description?: string;
+    }
+
+    /**
      * Interface for contributing additional context properties to Object Explorer nodes
      */
     export interface IContextContributor {
         /**
-         * Called for each node to contribute additional context properties.
-         * The returned properties will be merged into the node's contextValue.
+         * Called for each node to contribute additional context properties and display modifications.
          * @param node The tree node to contribute context for
-         * @returns A promise resolving to additional context properties, or undefined
+         * @returns A promise resolving to context contribution, or undefined
          */
-        contributeContext(node: ITreeNodeInfo): Promise<Record<string, string | boolean> | undefined>;
+        contributeContext(node: ITreeNodeInfo): Promise<IContextContribution | undefined>;
     }
 
     export interface NodeFilterProperty {

@@ -13,10 +13,19 @@ const GIT_LINKED_DATABASES_KEY = "mssql-git.linkedDatabases";
  * Information about a database's git link status
  */
 export interface GitLinkInfo {
+    /** Server identifier (server name/host) */
     serverId: string;
+    /** Database name */
     databaseName: string;
-    gitRepoPath: string;
+    /** Remote Git repository URL */
+    gitRepoUrl: string;
+    /** Local directory where the repository is cloned */
+    localGitPath: string;
+    /** Git branch name */
     branchName: string;
+    /** Path to local database schema cache directory (for future comparison feature) */
+    localCachePath?: string;
+    /** Timestamp when the link was created */
     linkedAt: string;
 }
 
@@ -93,15 +102,19 @@ export class GitStatusService {
     public async linkDatabaseToGit(
         connectionProfile: IConnectionInfo,
         databaseName: string,
-        gitRepoPath: string,
+        gitRepoUrl: string,
+        localGitPath: string,
         branchName: string,
+        localCachePath?: string,
     ): Promise<void> {
         const key = this._getDatabaseKey(connectionProfile, databaseName);
         const info: GitLinkInfo = {
             serverId: connectionProfile.server || "",
             databaseName,
-            gitRepoPath,
+            gitRepoUrl,
+            localGitPath,
             branchName,
+            localCachePath,
             linkedAt: new Date().toISOString(),
         };
 

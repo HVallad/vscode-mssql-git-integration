@@ -62,10 +62,18 @@ export class ObjectExplorerProvider implements vscode.TreeDataProvider<any> {
         contributor: vscodeMssql.IContextContributor,
     ): vscode.Disposable {
         this._contextContributors.push(contributor);
+        console.log(`ObjectExplorer: Context contributor registered (total: ${this._contextContributors.length})`);
+
+        // Refresh the tree to apply the new contributor's context
+        this.refresh();
+
         return new vscode.Disposable(() => {
             const index = this._contextContributors.indexOf(contributor);
             if (index >= 0) {
                 this._contextContributors.splice(index, 1);
+                console.log(`ObjectExplorer: Context contributor unregistered (remaining: ${this._contextContributors.length})`);
+                // Refresh the tree after unregistering
+                this.refresh();
             }
         });
     }
@@ -133,14 +141,32 @@ export class ObjectExplorerProvider implements vscode.TreeDataProvider<any> {
                 hasFilters: false,
             };
 
+            // Collect descriptions from contributors
+            const descriptions: string[] = [];
+
             for (const contribution of contributions) {
                 if (contribution) {
                     console.log(`ObjectExplorer: Merging contribution:`, contribution);
-                    Object.assign(context, contribution);
+
+                    // Merge context properties
+                    if (contribution.contextProperties) {
+                        Object.assign(context, contribution.contextProperties);
+                    }
+
+                    // Collect description if provided
+                    if (contribution.description) {
+                        descriptions.push(contribution.description);
+                    }
                 }
             }
 
             node.context = context;
+
+            // Set description on the node (join multiple descriptions with separator)
+            if (descriptions.length > 0) {
+                node.description = descriptions.join(" | ");
+            }
+
             console.log(`ObjectExplorer: Final contextValue for ${node.nodeType}: '${node.contextValue}'`);
         } catch (err) {
             console.error("Error applying context contributions:", err);

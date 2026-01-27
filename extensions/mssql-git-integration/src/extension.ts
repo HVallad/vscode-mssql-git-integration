@@ -49,7 +49,7 @@ export async function activate(
         mssqlApi.objectExplorer.registerContextContributor({
             async contributeContext(
                 node: vscodeMssql.ITreeNodeInfo,
-            ): Promise<Record<string, string | boolean> | undefined> {
+            ): Promise<vscodeMssql.IContextContribution | undefined> {
                 console.log(`MSSQL Git: contributeContext called for nodeType='${node.nodeType}', label='${node.label}'`);
 
                 // Only contribute context for Database nodes
@@ -58,16 +58,25 @@ export async function activate(
                     return undefined;
                 }
 
-                // Check if this database is linked to git
-                const isLinked = await gitStatusService!.isDatabaseLinkedToGit(
+                const databaseName = node.metadata?.name || "";
+
+                // Get git link info for this database
+                const linkInfo = gitStatusService!.getGitLinkInfo(
                     node.connectionProfile,
-                    node.metadata?.name || "",
+                    databaseName,
                 );
 
-                console.log(`MSSQL Git: Database '${node.metadata?.name}' gitLinked=${isLinked}`);
+                const isLinked = linkInfo !== undefined;
 
+                console.log(`MSSQL Git: Database '${databaseName}' gitLinked=${isLinked}, branch=${linkInfo?.branchName || 'N/A'}`);
+
+                // Return context contribution with branch name as description
+                // Using git branch icon (⎇) to indicate git-linked database
                 return {
-                    gitLinked: isLinked,
+                    contextProperties: {
+                        gitLinked: isLinked,
+                    },
+                    description: isLinked ? `⎇ ${linkInfo!.branchName}` : undefined,
                 };
             },
         });
