@@ -8,18 +8,21 @@
       "args": [
         "--extensionDevelopmentPath=${workspaceFolder}/extensions/mssql",
         "--extensionDevelopmentPath=${workspaceFolder}/extensions/sql-database-projects",
-        "--extensionDevelopmentPath=${workspaceFolder}/extensions/data-workspace"
+        "--extensionDevelopmentPath=${workspaceFolder}/extensions/data-workspace",
+        "--extensionDevelopmentPath=${workspaceFolder}/extensions/mssql-git-integration"
       ],
       "outFiles": [
         "${workspaceFolder}/extensions/mssql/out/**/*.js",
         "${workspaceFolder}/extensions/sql-database-projects/out/**/*.js",
-        "${workspaceFolder}/extensions/data-workspace/out/**/*.js"
+        "${workspaceFolder}/extensions/data-workspace/out/**/*.js",
+        "${workspaceFolder}/extensions/mssql-git-integration/out/**/*.js"
       ],
       "sourceMaps": true,
       "resolveSourceMapLocations": [
         "${workspaceFolder}/extensions/mssql/dist/**",
         "${workspaceFolder}/extensions/sql-database-projects/out/**",
-        "${workspaceFolder}/extensions/data-workspace/out/**"
+        "${workspaceFolder}/extensions/data-workspace/out/**",
+        "${workspaceFolder}/extensions/mssql-git-integration/out/**"
       ],
       "debugWebviews": true,
       "rendererDebugOptions": {

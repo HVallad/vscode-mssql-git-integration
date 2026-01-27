@@ -134,6 +134,13 @@ declare module "vscode-mssql" {
          * APIs for working with mssql connections
          */
         connectionSharing: IConnectionSharingService;
+
+        /**
+         * APIs for extending Object Explorer functionality.
+         * Allows external extensions to contribute context properties to nodes,
+         * subscribe to selection events, and request refreshes.
+         */
+        objectExplorer: IObjectExplorerExtensionApi;
     }
 
     /**
@@ -1888,6 +1895,56 @@ declare module "vscode-mssql" {
         subType: string;
         filterable: boolean;
         hasFilters: boolean;
+        /** Additional properties contributed by external extensions */
+        [key: string]: string | boolean | undefined;
+    }
+
+    /**
+     * API for extending Object Explorer functionality from external extensions
+     */
+    export interface IObjectExplorerExtensionApi {
+        /**
+         * Register a contributor that adds properties to node context values.
+         * These properties can be used in `when` clauses for menu visibility.
+         * @param contributor The context contributor to register
+         * @returns A disposable that unregisters the contributor when disposed
+         */
+        registerContextContributor(contributor: IContextContributor): vscode.Disposable;
+
+        /**
+         * Event fired when a node is selected in Object Explorer
+         */
+        readonly onDidSelectNode: vscode.Event<ITreeNodeInfo>;
+
+        /**
+         * Event fired when Object Explorer refreshes a node or the entire tree
+         */
+        readonly onDidRefresh: vscode.Event<ITreeNodeInfo | undefined>;
+
+        /**
+         * Request a refresh of a specific node or the entire tree
+         * @param node The node to refresh, or undefined to refresh the entire tree
+         */
+        refresh(node?: ITreeNodeInfo): void;
+
+        /**
+         * Get the currently selected node in Object Explorer
+         * @returns The currently selected node, or undefined if none is selected
+         */
+        getSelectedNode(): ITreeNodeInfo | undefined;
+    }
+
+    /**
+     * Interface for contributing additional context properties to Object Explorer nodes
+     */
+    export interface IContextContributor {
+        /**
+         * Called for each node to contribute additional context properties.
+         * The returned properties will be merged into the node's contextValue.
+         * @param node The tree node to contribute context for
+         * @returns A promise resolving to additional context properties, or undefined
+         */
+        contributeContext(node: ITreeNodeInfo): Promise<Record<string, string | boolean> | undefined>;
     }
 
     export interface NodeFilterProperty {

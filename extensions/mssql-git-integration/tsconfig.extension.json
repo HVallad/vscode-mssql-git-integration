@@ -1,0 +1,23 @@
+{
+    "compileOnSave": true,
+    "compilerOptions": {
+        "outDir": "out",
+        "module": "CommonJS",
+        "target": "ES2024",
+        "lib": ["ES2024", "dom"],
+        "sourceMap": true,
+        "allowUnusedLabels": false,
+        "allowSyntheticDefaultImports": true,
+        "emitDecoratorMetadata": true,
+        "experimentalDecorators": true,
+        "rootDir": ".",
+        "noUnusedLocals": true,
+        "skipLibCheck": true,
+        "strict": true,
+        "esModuleInterop": true,
+        "resolveJsonModule": true
+    },
+    "include": ["src", "test", "typings"],
+    "exclude": ["node_modules"]
+}
+

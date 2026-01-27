@@ -192,6 +192,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<IExten
                 );
             },
         } as vscodeMssql.IConnectionSharingService,
+        objectExplorer: {
+            registerContextContributor: (contributor: vscodeMssql.IContextContributor) => {
+                return controller.objectEpxplorerProvider.registerContextContributor(contributor);
+            },
+            onDidSelectNode: controller.objectEpxplorerProvider.onDidSelectNode,
+            onDidRefresh: controller.objectEpxplorerProvider.onDidRefresh,
+            refresh: (node?: vscodeMssql.ITreeNodeInfo) => {
+                controller.objectEpxplorerProvider.refresh(node as any);
+            },
+            getSelectedNode: () => {
+                return controller.objectEpxplorerProvider.getSelectedNode();
+            },
+        } as vscodeMssql.IObjectExplorerExtensionApi,
     };
 }
 

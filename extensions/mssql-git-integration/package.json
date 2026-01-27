@@ -1,0 +1,130 @@
+{
+    "name": "mssql-git-integration",
+    "displayName": "MSSQL Git Integration",
+    "description": "Git integration and source control for SQL Server databases",
+    "version": "0.1.0",
+    "publisher": "hvallad",
+    "preview": true,
+    "homepage": "https://github.com/HVallad/vscode-mssql-git-integration",
+    "engines": {
+        "vscode": "^1.98.0"
+    },
+    "license": "MIT",
+    "icon": "images/icon.png",
+    "activationEvents": [
+        "onView:objectExplorer"
+    ],
+    "main": "./out/src/extension.js",
+    "l10n": "./l10n",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/HVallad/vscode-mssql-git-integration.git"
+    },
+    "extensionDependencies": [
+        "ms-mssql.mssql"
+    ],
+    "scripts": {
+        "build:extension": "tsc -p tsconfig.extension.json",
+        "build": "yarn build:extension",
+        "watch": "tsc -watch -p tsconfig.extension.json --preserveWatchOutput",
+        "lint": "eslint ./src",
+        "test": "yarn build && node ./out/test/runTest.js"
+    },
+    "devDependencies": {
+        "@types/node": "^20.0.0",
+        "@types/vscode": "^1.98.0",
+        "typescript": "^5.0.0"
+    },
+    "dependencies": {
+        "simple-git": "^3.22.0"
+    },
+    "contributes": {
+        "commands": [
+            {
+                "command": "mssql-git.linkDatabaseToGitBranch",
+                "title": "Link Database to Git Branch",
+                "category": "MSSQL Git"
+            },
+            {
+                "command": "mssql-git.unlinkDatabaseFromGitBranch",
+                "title": "Unlink Database from Git Branch",
+                "category": "MSSQL Git"
+            },
+            {
+                "command": "mssql-git.pullDatabaseChanges",
+                "title": "Pull Database Changes",
+                "category": "MSSQL Git"
+            },
+            {
+                "command": "mssql-git.pushDatabaseChanges",
+                "title": "Push Database Changes to Git",
+                "category": "MSSQL Git"
+            },
+            {
+                "command": "mssql-git.refreshLocalCache",
+                "title": "Refresh Local Cache",
+                "category": "MSSQL Git"
+            },
+            {
+                "command": "mssql-git.clearLocalCache",
+                "title": "Clear Local Cache",
+                "category": "MSSQL Git"
+            },
+            {
+                "command": "mssql-git.compareWithCache",
+                "title": "Compare with Cache",
+                "category": "MSSQL Git"
+            },
+            {
+                "command": "mssql-git.showMigrationScript",
+                "title": "Show Migration Script",
+                "category": "MSSQL Git"
+            }
+        ],
+        "menus": {
+            "view/item/context": [
+                {
+                    "command": "mssql-git.linkDatabaseToGitBranch",
+                    "when": "view == objectExplorer && viewItem =~ /type=Database/ && viewItem =~ /gitLinked=false/",
+                    "group": "8_MSSQL_gitIntegration@1"
+                },
+                {
+                    "command": "mssql-git.unlinkDatabaseFromGitBranch",
+                    "when": "view == objectExplorer && viewItem =~ /type=Database/ && viewItem =~ /gitLinked=true/",
+                    "group": "8_MSSQL_gitIntegration@2"
+                },
+                {
+                    "command": "mssql-git.pullDatabaseChanges",
+                    "when": "view == objectExplorer && viewItem =~ /type=Database/ && viewItem =~ /gitLinked=true/",
+                    "group": "8_MSSQL_gitIntegration@3"
+                },
+                {
+                    "command": "mssql-git.pushDatabaseChanges",
+                    "when": "view == objectExplorer && viewItem =~ /type=Database/ && viewItem =~ /gitLinked=true/",
+                    "group": "8_MSSQL_gitIntegration@4"
+                },
+                {
+                    "command": "mssql-git.refreshLocalCache",
+                    "when": "view == objectExplorer && viewItem =~ /type=Database/",
+                    "group": "9_MSSQL_localCache@1"
+                },
+                {
+                    "command": "mssql-git.clearLocalCache",
+                    "when": "view == objectExplorer && viewItem =~ /type=Database/",
+                    "group": "9_MSSQL_localCache@2"
+                },
+                {
+                    "command": "mssql-git.compareWithCache",
+                    "when": "view == objectExplorer && viewItem =~ /type=Database/",
+                    "group": "9_MSSQL_localCache@3"
+                },
+                {
+                    "command": "mssql-git.showMigrationScript",
+                    "when": "view == objectExplorer && viewItem =~ /type=Database/ && viewItem =~ /gitLinked=true/",
+                    "group": "8_MSSQL_gitIntegration@5"
+                }
+            ]
+        }
+    }
+}
+
