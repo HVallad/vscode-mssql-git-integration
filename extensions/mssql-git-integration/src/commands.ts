@@ -170,22 +170,12 @@ export function registerCommands(
         ),
     );
 
-    // Pull database changes
+    // Compare database to repo
     context.subscriptions.push(
         vscode.commands.registerCommand(
-            "mssql-git.pullDatabaseChanges",
+            "mssql-git.compareDatabaseToRepo",
             async (node: vscodeMssql.ITreeNodeInfo) => {
-                await pullDatabaseChanges(node);
-            },
-        ),
-    );
-
-    // Push database changes
-    context.subscriptions.push(
-        vscode.commands.registerCommand(
-            "mssql-git.pushDatabaseChanges",
-            async (node: vscodeMssql.ITreeNodeInfo) => {
-                await pushDatabaseChanges(node);
+                await compareDatabaseToRepo(node);
             },
         ),
     );
@@ -196,36 +186,6 @@ export function registerCommands(
             "mssql-git.refreshLocalCache",
             async (node: vscodeMssql.ITreeNodeInfo) => {
                 await refreshLocalCache(node);
-            },
-        ),
-    );
-
-    // Clear local cache
-    context.subscriptions.push(
-        vscode.commands.registerCommand(
-            "mssql-git.clearLocalCache",
-            async (node: vscodeMssql.ITreeNodeInfo) => {
-                await clearLocalCache(node);
-            },
-        ),
-    );
-
-    // Compare with cache
-    context.subscriptions.push(
-        vscode.commands.registerCommand(
-            "mssql-git.compareWithCache",
-            async (node: vscodeMssql.ITreeNodeInfo) => {
-                await compareWithCache(node);
-            },
-        ),
-    );
-
-    // Show migration script
-    context.subscriptions.push(
-        vscode.commands.registerCommand(
-            "mssql-git.showMigrationScript",
-            async (node: vscodeMssql.ITreeNodeInfo) => {
-                await showMigrationScript(node);
             },
         ),
     );
@@ -425,23 +385,14 @@ async function unlinkDatabaseFromGitBranch(
     );
 }
 
-async function pullDatabaseChanges(
+async function compareDatabaseToRepo(
     node: vscodeMssql.ITreeNodeInfo,
 ): Promise<void> {
     const databaseName = node.metadata?.name || node.label?.toString() || "";
-    // TODO: Implement pull database changes from git
+    // TODO: Implement compare database to repo
+    // This will compare the current database schema with the schema in the linked git repository
     vscode.window.showInformationMessage(
-        `Pull database changes for "${databaseName}" - Not yet implemented`,
-    );
-}
-
-async function pushDatabaseChanges(
-    node: vscodeMssql.ITreeNodeInfo,
-): Promise<void> {
-    const databaseName = node.metadata?.name || node.label?.toString() || "";
-    // TODO: Implement push database changes to git
-    vscode.window.showInformationMessage(
-        `Push database changes for "${databaseName}" - Not yet implemented`,
+        `Compare database to repo for "${databaseName}" - Not yet implemented`,
     );
 }
 
@@ -454,34 +405,3 @@ async function refreshLocalCache(
         `Refresh local cache for "${databaseName}" - Not yet implemented`,
     );
 }
-
-async function clearLocalCache(
-    node: vscodeMssql.ITreeNodeInfo,
-): Promise<void> {
-    const databaseName = node.metadata?.name || node.label?.toString() || "";
-    // TODO: Implement clear local cache
-    vscode.window.showInformationMessage(
-        `Clear local cache for "${databaseName}" - Not yet implemented`,
-    );
-}
-
-async function compareWithCache(
-    node: vscodeMssql.ITreeNodeInfo,
-): Promise<void> {
-    const databaseName = node.metadata?.name || node.label?.toString() || "";
-    // TODO: Implement compare with cache
-    vscode.window.showInformationMessage(
-        `Compare with cache for "${databaseName}" - Not yet implemented`,
-    );
-}
-
-async function showMigrationScript(
-    node: vscodeMssql.ITreeNodeInfo,
-): Promise<void> {
-    const databaseName = node.metadata?.name || node.label?.toString() || "";
-    // TODO: Implement show migration script
-    vscode.window.showInformationMessage(
-        `Show migration script for "${databaseName}" - Not yet implemented`,
-    );
-}
-

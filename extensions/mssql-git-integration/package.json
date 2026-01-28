@@ -51,33 +51,13 @@
                 "category": "MSSQL Git"
             },
             {
-                "command": "mssql-git.pullDatabaseChanges",
-                "title": "Pull Database Changes",
-                "category": "MSSQL Git"
-            },
-            {
-                "command": "mssql-git.pushDatabaseChanges",
-                "title": "Push Database Changes to Git",
+                "command": "mssql-git.compareDatabaseToRepo",
+                "title": "Compare Database to Repo",
                 "category": "MSSQL Git"
             },
             {
                 "command": "mssql-git.refreshLocalCache",
                 "title": "Refresh Local Cache",
-                "category": "MSSQL Git"
-            },
-            {
-                "command": "mssql-git.clearLocalCache",
-                "title": "Clear Local Cache",
-                "category": "MSSQL Git"
-            },
-            {
-                "command": "mssql-git.compareWithCache",
-                "title": "Compare with Cache",
-                "category": "MSSQL Git"
-            },
-            {
-                "command": "mssql-git.showMigrationScript",
-                "title": "Show Migration Script",
                 "category": "MSSQL Git"
             }
         ],
@@ -94,34 +74,14 @@
                     "group": "8_MSSQL_gitIntegration@2"
                 },
                 {
-                    "command": "mssql-git.pullDatabaseChanges",
+                    "command": "mssql-git.compareDatabaseToRepo",
                     "when": "view == objectExplorer && viewItem =~ /type=Database/ && viewItem =~ /gitLinked=true/",
                     "group": "8_MSSQL_gitIntegration@3"
-                },
-                {
-                    "command": "mssql-git.pushDatabaseChanges",
-                    "when": "view == objectExplorer && viewItem =~ /type=Database/ && viewItem =~ /gitLinked=true/",
-                    "group": "8_MSSQL_gitIntegration@4"
                 },
                 {
                     "command": "mssql-git.refreshLocalCache",
                     "when": "view == objectExplorer && viewItem =~ /type=Database/",
                     "group": "9_MSSQL_localCache@1"
-                },
-                {
-                    "command": "mssql-git.clearLocalCache",
-                    "when": "view == objectExplorer && viewItem =~ /type=Database/",
-                    "group": "9_MSSQL_localCache@2"
-                },
-                {
-                    "command": "mssql-git.compareWithCache",
-                    "when": "view == objectExplorer && viewItem =~ /type=Database/",
-                    "group": "9_MSSQL_localCache@3"
-                },
-                {
-                    "command": "mssql-git.showMigrationScript",
-                    "when": "view == objectExplorer && viewItem =~ /type=Database/ && viewItem =~ /gitLinked=true/",
-                    "group": "8_MSSQL_gitIntegration@5"
                 }
             ]
         }
