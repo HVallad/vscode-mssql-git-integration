@@ -211,6 +211,142 @@ async function linkDatabaseToGitBranch(
         }
     }
 
+    // Step 1: Ask user to choose between existing local repository or clone from remote
+    const repositoryChoice = await vscode.window.showQuickPick(
+        [
+            {
+                label: "$(folder) Use existing local repository",
+                description: "Browse for an existing Git repository folder",
+                value: "local",
+            },
+            {
+                label: "$(cloud-download) Clone from remote repository",
+                description: "Clone a repository from a URL",
+                value: "clone",
+            },
+        ],
+        {
+            placeHolder: "Choose how to link to a Git repository",
+            ignoreFocusOut: true,
+            title: "Link Database to Git Repository",
+        },
+    );
+
+    if (!repositoryChoice) {
+        return; // User cancelled
+    }
+
+    if (repositoryChoice.value === "local") {
+        // Use existing local repository
+        await linkToExistingLocalRepository(node, mssqlApi, gitStatusService, databaseName);
+    } else {
+        // Clone from remote repository
+        await cloneAndLinkRepository(node, mssqlApi, gitStatusService, databaseName);
+    }
+}
+
+/**
+ * Link database to an existing local Git repository
+ */
+async function linkToExistingLocalRepository(
+    node: vscodeMssql.ITreeNodeInfo,
+    mssqlApi: vscodeMssql.IExtension,
+    gitStatusService: GitStatusService,
+    databaseName: string,
+): Promise<void> {
+    // Step 1: Browse for existing Git repository folder
+    const defaultPath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || os.homedir();
+
+    const folderUri = await vscode.window.showOpenDialog({
+        canSelectFiles: false,
+        canSelectFolders: true,
+        canSelectMany: false,
+        openLabel: "Select Repository",
+        title: "Select existing Git repository folder",
+        defaultUri: vscode.Uri.file(defaultPath),
+    });
+
+    if (!folderUri || folderUri.length === 0) {
+        return; // User cancelled
+    }
+
+    const localRepoPath = folderUri[0].fsPath;
+
+    // Step 2: Validate it's a Git repository and get current branch
+    let currentBranch: string | undefined;
+    let remoteUrl: string | undefined;
+
+    await vscode.window.withProgress(
+        {
+            location: vscode.ProgressLocation.Notification,
+            title: "Validating Git repository...",
+            cancellable: false,
+        },
+        async () => {
+            try {
+                const git: SimpleGit = simpleGit(localRepoPath);
+
+                // Check if it's a valid git repository
+                const isRepo = await git.checkIsRepo();
+                if (!isRepo) {
+                    void vscode.window.showErrorMessage(
+                        `The selected folder is not a Git repository: ${localRepoPath}`,
+                    );
+                    return;
+                }
+
+                // Get current branch
+                const branchSummary = await git.branch();
+                currentBranch = branchSummary.current;
+
+                // Try to get remote origin URL
+                try {
+                    const remotes = await git.getRemotes(true);
+                    const origin = remotes.find((r) => r.name === "origin");
+                    remoteUrl = origin?.refs?.fetch || origin?.refs?.push;
+                } catch {
+                    // Remote URL is optional - local-only repos are fine
+                    remoteUrl = undefined;
+                }
+            } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : String(error);
+                void vscode.window.showErrorMessage(`Failed to read Git repository: ${errorMessage}`);
+                currentBranch = undefined;
+            }
+        },
+    );
+
+    if (!currentBranch) {
+        return; // Repository validation failed
+    }
+
+    // Step 3: Persist the association
+    await gitStatusService.linkDatabaseToGit(
+        node.connectionProfile,
+        databaseName,
+        remoteUrl || `local:${localRepoPath}`,
+        localRepoPath,
+        currentBranch,
+    );
+
+    // Step 4: Refresh Object Explorer to update context
+    mssqlApi.objectExplorer.refresh(node);
+
+    const repoDescription = remoteUrl ? `${currentBranch} branch of ${remoteUrl}` : `${currentBranch} branch (local)`;
+    void vscode.window.showInformationMessage(
+        `Database "${databaseName}" linked to ${repoDescription}`,
+    );
+}
+
+/**
+ * Clone a remote repository and link database to it
+ */
+async function cloneAndLinkRepository(
+    node: vscodeMssql.ITreeNodeInfo,
+    mssqlApi: vscodeMssql.IExtension,
+    gitStatusService: GitStatusService,
+    databaseName: string,
+): Promise<void> {
     // Step 1: Prompt for Git repository URL
     const repoUrlInput = await vscode.window.showInputBox({
         prompt: "Enter Git repository URL (HTTPS or SSH)",
@@ -377,8 +513,17 @@ async function unlinkDatabaseFromGitBranch(
         databaseName,
     );
 
-    // Refresh the Object Explorer to update the context value
+    console.log(`MSSQL Git: Unlinked database "${databaseName}". Refreshing Object Explorer...`);
+    console.log(`MSSQL Git: Node id: ${(node as any).id}, nodeType: ${node.nodeType}`);
+
+    // Clear the description directly on the node object before refreshing
+    // This is necessary because VS Code may not re-call getTreeItem for nested nodes
+    (node as any).description = undefined;
+
+    // Refresh the specific database node to update the UI
     mssqlApi.objectExplorer.refresh(node);
+
+    console.log(`MSSQL Git: Object Explorer refresh called for specific node`);
 
     vscode.window.showInformationMessage(
         `Database "${databaseName}" unlinked from git`,

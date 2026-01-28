@@ -163,10 +163,16 @@ export class ObjectExplorerProvider implements vscode.TreeDataProvider<any> {
             node.context = context;
 
             // Set description on the node (join multiple descriptions with separator)
+            // Clear description if no contributors provide one (important for unlink scenarios)
+            const oldDescription = node.description;
             if (descriptions.length > 0) {
                 node.description = descriptions.join(" | ");
+            } else {
+                // Clear any previously set description from context contributors
+                node.description = undefined;
             }
 
+            console.log(`ObjectExplorer: Node '${node.label}' description changed from '${oldDescription}' to '${node.description}'`);
             console.log(`ObjectExplorer: Final contextValue for ${node.nodeType}: '${node.contextValue}'`);
         } catch (err) {
             console.error("Error applying context contributions:", err);
