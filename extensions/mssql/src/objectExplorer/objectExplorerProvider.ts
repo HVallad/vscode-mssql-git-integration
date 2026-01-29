@@ -157,6 +157,11 @@ export class ObjectExplorerProvider implements vscode.TreeDataProvider<any> {
                     if (contribution.description) {
                         descriptions.push(contribution.description);
                     }
+
+                    // Set resourceUri if provided (for file decoration support)
+                    if (contribution.resourceUri) {
+                        node.resourceUri = vscode.Uri.parse(contribution.resourceUri);
+                    }
                 }
             }
 

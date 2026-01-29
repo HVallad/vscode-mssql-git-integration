@@ -2453,21 +2453,41 @@ export class SchemaCompareWebViewController extends ReactWebviewPanelController<
             },
         );
 
+        // Only fetch project scripts if targetScripts is not already populated.
+        // This allows callers to pass pre-filtered scripts for faster comparisons.
         if (payload.sourceEndpointInfo.endpointType === SchemaCompareEndpointType.Project) {
-            this.logger.logDebug(
-                `Getting project script files for source: ${payload.sourceEndpointInfo.projectFilePath} - OperationId: ${this.operationId}`,
-            );
-            payload.sourceEndpointInfo.targetScripts = await this.getProjectScriptFiles(
-                payload.sourceEndpointInfo.projectFilePath,
-            );
+            if (
+                !payload.sourceEndpointInfo.targetScripts ||
+                payload.sourceEndpointInfo.targetScripts.length === 0
+            ) {
+                this.logger.logDebug(
+                    `Getting project script files for source: ${payload.sourceEndpointInfo.projectFilePath} - OperationId: ${this.operationId}`,
+                );
+                payload.sourceEndpointInfo.targetScripts = await this.getProjectScriptFiles(
+                    payload.sourceEndpointInfo.projectFilePath,
+                );
+            } else {
+                this.logger.logDebug(
+                    `Using pre-populated targetScripts (${payload.sourceEndpointInfo.targetScripts.length} files) for source - OperationId: ${this.operationId}`,
+                );
+            }
         }
         if (payload.targetEndpointInfo.endpointType === SchemaCompareEndpointType.Project) {
-            this.logger.logDebug(
-                `Getting project script files for target: ${payload.targetEndpointInfo.projectFilePath} - OperationId: ${this.operationId}`,
-            );
-            payload.targetEndpointInfo.targetScripts = await this.getProjectScriptFiles(
-                payload.targetEndpointInfo.projectFilePath,
-            );
+            if (
+                !payload.targetEndpointInfo.targetScripts ||
+                payload.targetEndpointInfo.targetScripts.length === 0
+            ) {
+                this.logger.logDebug(
+                    `Getting project script files for target: ${payload.targetEndpointInfo.projectFilePath} - OperationId: ${this.operationId}`,
+                );
+                payload.targetEndpointInfo.targetScripts = await this.getProjectScriptFiles(
+                    payload.targetEndpointInfo.projectFilePath,
+                );
+            } else {
+                this.logger.logDebug(
+                    `Using pre-populated targetScripts (${payload.targetEndpointInfo.targetScripts.length} files) for target - OperationId: ${this.operationId}`,
+                );
+            }
         }
 
         const booleanOptionsAsStrings: { [key: string]: string } = {};

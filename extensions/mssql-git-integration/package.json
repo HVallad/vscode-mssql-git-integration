@@ -31,11 +31,13 @@
         "test": "yarn build && node ./out/test/runTest.js"
     },
     "devDependencies": {
+        "@types/glob": "^9.0.0",
         "@types/node": "^20.0.0",
         "@types/vscode": "^1.98.0",
         "typescript": "^5.0.0"
     },
     "dependencies": {
+        "fast-glob": "^3.3.3",
         "simple-git": "^3.22.0"
     },
     "contributes": {
@@ -52,12 +54,27 @@
             },
             {
                 "command": "mssql-git.compareDatabaseToRepo",
-                "title": "Compare Database to Repo",
+                "title": "Compare Database to Repo (Fast)",
+                "category": "MSSQL Git"
+            },
+            {
+                "command": "mssql-git.deepCompareDatabaseToRepo",
+                "title": "Deep Compare Database to Repo",
+                "category": "MSSQL Git"
+            },
+            {
+                "command": "mssql-git.reinitializeSyncMetadata",
+                "title": "Reinitialize Sync Metadata",
                 "category": "MSSQL Git"
             },
             {
                 "command": "mssql-git.refreshLocalCache",
                 "title": "Refresh Local Cache",
+                "category": "MSSQL Git"
+            },
+            {
+                "command": "mssql-git.compareDatabaseAndLaunchSchemaCompare",
+                "title": "Compare and Open in Schema Compare",
                 "category": "MSSQL Git"
             }
         ],
@@ -79,6 +96,21 @@
                     "group": "8_MSSQL_gitIntegration@3"
                 },
                 {
+                    "command": "mssql-git.deepCompareDatabaseToRepo",
+                    "when": "view == objectExplorer && viewItem =~ /type=Database/ && viewItem =~ /gitLinked=true/",
+                    "group": "8_MSSQL_gitIntegration@4"
+                },
+                {
+                    "command": "mssql-git.reinitializeSyncMetadata",
+                    "when": "view == objectExplorer && viewItem =~ /type=Database/ && viewItem =~ /gitLinked=true/",
+                    "group": "8_MSSQL_gitIntegration@5"
+                },
+                {
+                    "command": "mssql-git.compareDatabaseAndLaunchSchemaCompare",
+                    "when": "view == objectExplorer && viewItem =~ /type=Database/ && viewItem =~ /gitLinked=true/",
+                    "group": "8_MSSQL_gitIntegration@6"
+                },
+                {
                     "command": "mssql-git.refreshLocalCache",
                     "when": "view == objectExplorer && viewItem =~ /type=Database/",
                     "group": "9_MSSQL_localCache@1"
@@ -87,4 +119,3 @@
         }
     }
 }
-

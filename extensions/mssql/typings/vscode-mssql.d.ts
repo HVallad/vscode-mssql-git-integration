@@ -1935,6 +1935,30 @@ declare module "vscode-mssql" {
     }
 
     /**
+     * Decoration to apply to a tree node (similar to VS Code's FileDecoration)
+     */
+    export interface INodeDecoration {
+        /**
+         * A short string (1-2 characters) shown as a badge on the node.
+         * Examples: "+", "M", "-", "!"
+         */
+        badge?: string;
+        /**
+         * The color of the badge and/or the node label.
+         * Use ThemeColor names like "gitDecoration.addedResourceForeground"
+         */
+        color?: string;
+        /**
+         * Tooltip text shown when hovering over the decoration
+         */
+        tooltip?: string;
+        /**
+         * Whether to propagate this decoration to parent nodes
+         */
+        propagate?: boolean;
+    }
+
+    /**
      * Result from a context contributor
      */
     export interface IContextContribution {
@@ -1948,6 +1972,16 @@ declare module "vscode-mssql" {
          * This appears in a lighter color to the right of the label.
          */
         description?: string;
+        /**
+         * Optional decoration to apply to the node (badge, color, tooltip).
+         * Used for visual indicators like git sync status.
+         */
+        decoration?: INodeDecoration;
+        /**
+         * Optional resource URI for the node, used for file decoration provider.
+         * If provided, the ObjectExplorerProvider will set this as the node's resourceUri.
+         */
+        resourceUri?: string;
     }
 
     /**
@@ -2648,6 +2682,19 @@ declare module "vscode-mssql" {
          * Each row is an array of DbCellValue, representing the values of each column in that row.
          */
         rows: DbCellValue[][];
+    }
+
+    /**
+     * Scripting operation types for scriptObject
+     */
+    export const enum ScriptOperation {
+        Select = 0,
+        Create = 1,
+        Insert = 2,
+        Update = 3,
+        Delete = 4,
+        Execute = 5,
+        Alter = 6,
     }
 
     export interface IScriptingObject {

@@ -15,7 +15,7 @@ import VscodeWrapper from "../controllers/vscodeWrapper";
 import { Logger } from "../models/logger";
 import * as Constants from "../constants/constants";
 import { ScriptingService } from "../scripting/scriptingService";
-import { ScriptOperation } from "../models/contracts/scripting/scriptingRequest";
+import { ScriptOperation as InternalScriptOperation } from "../models/contracts/scripting/scriptingRequest";
 
 const CONNECTION_SHARING_PERMISSIONS_KEY = "mssql.connectionSharing.extensionPermissions";
 
@@ -138,7 +138,7 @@ export class ConnectionSharingService implements mssql.IConnectionSharingService
                 "mssql.connectionSharing.scriptOperation",
                 (
                     connectionUri: string,
-                    operation: ScriptOperation,
+                    operation: mssql.ScriptOperation,
                     scriptingObject: mssql.IScriptingObject,
                 ) => this.scriptObject(connectionUri, operation, scriptingObject),
             ),
@@ -509,7 +509,7 @@ export class ConnectionSharingService implements mssql.IConnectionSharingService
 
     public async scriptObject(
         connectionUri: string,
-        operation: ScriptOperation,
+        operation: mssql.ScriptOperation,
         scriptingObject: mssql.IScriptingObject,
     ) {
         this._logger.info(
@@ -517,11 +517,12 @@ export class ConnectionSharingService implements mssql.IConnectionSharingService
         );
         this.validateConnection(connectionUri);
         const serverInfo = this.getServerInfo(connectionUri); // Ensure connection is valid
+        // Cast operation to internal type (they have identical values)
         const scriptingParams = this._scriptingService.createScriptingRequestParams(
             serverInfo,
             scriptingObject,
             connectionUri,
-            operation,
+            operation as unknown as InternalScriptOperation,
         );
         return await this._scriptingService.script(scriptingParams);
     }
