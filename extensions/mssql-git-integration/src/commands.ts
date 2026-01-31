@@ -16,6 +16,7 @@ import { SyncMetadataService } from "./services/syncMetadataService";
 import { SyncStatusCache } from "./services/syncStatusCache";
 import { GitSyncDecorationProvider } from "./services/gitSyncDecorationProvider";
 import simpleGit, { SimpleGit } from "simple-git";
+import { getSchemaCompareConfig } from "./config";
 
 // Git URL patterns for validation
 const GIT_HTTPS_REGEX = /^https?:\/\/[^\s/$.?#].[^\s]*\.git$/i;
@@ -1319,6 +1320,17 @@ async function launchFilteredSchemaCompare(
 ): Promise<void> {
     const databaseName = node.metadata?.name || node.label?.toString() || "";
 
+    // Get schema compare configuration options and build deployment overrides
+    const schemaCompareConfig = getSchemaCompareConfig();
+
+    // Map our config options to DacFx boolean option names
+    // These option names come from DacFx's DeploymentOptions (ignorePermissions, ignoreWhitespace)
+    // Always set both values to ensure they override any defaults from the schema compare service
+    const deploymentOptionsOverrides: { [key: string]: boolean } = {
+        ignorePermissions: schemaCompareConfig.excludePermissions,
+        ignoreWhitespace: schemaCompareConfig.excludeWhitespace,
+    };
+
     // Find .sqlproj files in the git repo
     const sqlprojFiles = await findSqlProjectFiles(linkInfo.localGitPath);
 
@@ -1410,6 +1422,7 @@ async function launchFilteredSchemaCompare(
                         node,
                         selectedProject,
                         true,
+                        deploymentOptionsOverrides, // Apply config settings
                     );
                     return;
                 }
@@ -1461,6 +1474,7 @@ async function launchFilteredSchemaCompare(
                     sourceEndpointInfo, // Source: temp scripted project
                     targetEndpointInfo, // Target: real project with filtered scripts
                     true, // Auto-run comparison
+                    deploymentOptionsOverrides, // Apply config settings (ignorePermissions, ignoreWhitespace)
                 );
 
                 // Show info about what changed

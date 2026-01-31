@@ -1514,22 +1514,33 @@ export default class MainController implements vscode.Disposable {
                             | SchemaCompareEndpointInfo
                             | boolean
                             | string
+                            | { [key: string]: boolean }
                             | undefined
                         )[]
                     ) => {
                         let sourceNode = undefined;
                         let targetNode = undefined;
                         let runComparison: boolean | undefined;
+                        let deploymentOptionsOverrides: { [key: string]: boolean } | undefined;
 
                         if (args.length >= 2) {
-                            // Positional arguments: [sourceNode, targetNode, runComparison]
+                            // Positional arguments: [sourceNode, targetNode, runComparison, deploymentOptionsOverrides]
                             sourceNode = args[0];
                             targetNode = args[1];
                             runComparison =
                                 args.length > 2 && typeof args[2] === "boolean" ? args[2] : false;
+                            // Fourth argument: optional deployment options overrides
+                            if (args.length > 3 && typeof args[3] === "object" && args[3] !== null) {
+                                deploymentOptionsOverrides = args[3] as { [key: string]: boolean };
+                            }
                         }
 
-                        await this.onSchemaCompare(sourceNode, targetNode, runComparison);
+                        await this.onSchemaCompare(
+                            sourceNode,
+                            targetNode,
+                            runComparison,
+                            deploymentOptionsOverrides,
+                        );
                     },
                 ),
             );
@@ -2633,8 +2644,34 @@ export default class MainController implements vscode.Disposable {
         sourceNode?: ConnectionNode | TreeNodeInfo | SchemaCompareEndpointInfo | string | undefined,
         targetNode?: ConnectionNode | TreeNodeInfo | SchemaCompareEndpointInfo | string | undefined,
         runComparison: boolean = false,
+        deploymentOptionsOverrides?: { [key: string]: boolean },
     ): Promise<void> {
         const result = await this.schemaCompareService.schemaCompareGetDefaultOptions();
+
+        // Read schema compare configuration settings from mssqlGitIntegration extension
+        const gitIntegrationConfig = vscode.workspace.getConfiguration("mssqlGitIntegration");
+        const excludePermissions = gitIntegrationConfig.get<boolean>("schemaCompare.excludePermissions", true);
+        const excludeWhitespace = gitIntegrationConfig.get<boolean>("schemaCompare.excludeWhitespace", false);
+
+        // Apply configuration settings to deployment options
+        if (result.defaultDeploymentOptions?.booleanOptionsDictionary) {
+            if (result.defaultDeploymentOptions.booleanOptionsDictionary["ignorePermissions"]) {
+                result.defaultDeploymentOptions.booleanOptionsDictionary["ignorePermissions"].value = excludePermissions;
+            }
+            if (result.defaultDeploymentOptions.booleanOptionsDictionary["ignoreWhitespace"]) {
+                result.defaultDeploymentOptions.booleanOptionsDictionary["ignoreWhitespace"].value = excludeWhitespace;
+            }
+        }
+
+        // Apply any additional deployment options overrides passed as parameter
+        if (deploymentOptionsOverrides && result.defaultDeploymentOptions?.booleanOptionsDictionary) {
+            for (const [optionName, value] of Object.entries(deploymentOptionsOverrides)) {
+                if (result.defaultDeploymentOptions.booleanOptionsDictionary[optionName]) {
+                    result.defaultDeploymentOptions.booleanOptionsDictionary[optionName].value = value;
+                }
+            }
+        }
+
         const schemaCompareWebView = new SchemaCompareWebViewController(
             this._context,
             this._vscodeWrapper,

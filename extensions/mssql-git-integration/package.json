@@ -116,6 +116,22 @@
                     "group": "9_MSSQL_localCache@1"
                 }
             ]
+        },
+        "configuration": {
+            "type": "object",
+            "title": "MSSQL Git Integration",
+            "properties": {
+                "mssqlGitIntegration.schemaCompare.excludePermissions": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Exclude permission statements when comparing database schemas. When enabled, GRANT, DENY, and REVOKE statements are ignored during comparison."
+                },
+                "mssqlGitIntegration.schemaCompare.excludeWhitespace": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Ignore whitespace differences when comparing database schemas. When enabled, differences in formatting and spacing are ignored."
+                }
+            }
         }
     }
 }
