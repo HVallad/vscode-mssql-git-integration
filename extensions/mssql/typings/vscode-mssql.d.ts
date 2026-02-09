@@ -1948,6 +1948,12 @@ declare module "vscode-mssql" {
          * This appears in a lighter color to the right of the label.
          */
         description?: string;
+        /**
+         * Optional resource URI for file decorations.
+         * When provided, the node will be decorated by any registered FileDecorationProvider
+         * that handles this URI scheme.
+         */
+        resourceUri?: import("vscode").Uri;
     }
 
     /**

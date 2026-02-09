@@ -9,6 +9,7 @@ import { GitStatusService } from "./services/gitStatusService";
 import { ServiceDiscovery } from "./services/serviceDiscovery";
 import { SqlComparisonClient } from "./services/sqlComparisonClient";
 import { ComparisonServiceSignalR } from "./services/signalRClient";
+import { ObjectExplorerDecorationService } from "./services/objectExplorerDecorationService";
 import { registerCommands } from "./commands";
 import {
     SubscriptionTreeProvider,
@@ -16,6 +17,7 @@ import {
     DiffViewer,
     SchemaSyncStatusBar,
     NotificationHandler,
+    SchemaDecorationProvider,
 } from "./views";
 import type { SchemaDifference } from "./types";
 
@@ -28,6 +30,8 @@ let gitStatusService: GitStatusService | undefined;
 let comparisonClient: SqlComparisonClient | undefined;
 let signalRClient: ComparisonServiceSignalR | undefined;
 let statusBar: SchemaSyncStatusBar | undefined;
+let decorationService: ObjectExplorerDecorationService | undefined;
+let schemaDecorationProvider: SchemaDecorationProvider | undefined;
 
 export async function activate(
     context: vscode.ExtensionContext,
@@ -96,6 +100,15 @@ export async function activate(
         // Extension continues to work without comparison features
     }
 
+    // Initialize decoration service for Object Explorer
+    decorationService = new ObjectExplorerDecorationService(gitStatusService, comparisonClient);
+
+    // Initialize and register the schema decoration provider for Git-style colors
+    schemaDecorationProvider = new SchemaDecorationProvider();
+    context.subscriptions.push(
+        vscode.window.registerFileDecorationProvider(schemaDecorationProvider)
+    );
+
     // Initialize UI components
     statusBar = new SchemaSyncStatusBar();
     statusBar.setConnectionStatus(comparisonClient !== undefined);
@@ -135,32 +148,140 @@ export async function activate(
             ): Promise<vscodeMssql.IContextContribution | undefined> {
                 console.log(`MSSQL Git: contributeContext called for nodeType='${node.nodeType}', label='${node.label}'`);
 
-                // Only contribute context for Database nodes
-                if (node.nodeType !== "Database") {
-                    console.log(`MSSQL Git: Skipping non-Database node (nodeType=${node.nodeType})`);
-                    return undefined;
+                // Handle Database nodes
+                if (node.nodeType === "Database") {
+                    const databaseName = node.metadata?.name || "";
+
+                    // Get git link info for this database
+                    const linkInfo = gitStatusService!.getGitLinkInfo(
+                        node.connectionProfile,
+                        databaseName,
+                    );
+
+                    const isLinked = linkInfo !== undefined;
+
+                    console.log(`MSSQL Git: Database '${databaseName}' gitLinked=${isLinked}, branch=${linkInfo?.branchName || 'N/A'}, subscriptionId=${linkInfo?.subscriptionId || 'N/A'}`);
+
+                    // If not linked, return early
+                    if (!isLinked) {
+                        return {
+                            contextProperties: {
+                                gitLinked: false,
+                            },
+                            description: undefined,
+                        };
+                    }
+
+                    // Build description parts
+                    const descriptionParts: string[] = [];
+                    descriptionParts.push(`⎇ ${linkInfo!.branchName}`);
+
+                    // If we have a subscription ID and comparison client, fetch the difference count
+                    let differenceCount = 0;
+                    let hasDifferences = false;
+
+                    if (linkInfo!.subscriptionId && decorationService) {
+                        try {
+                            differenceCount = await decorationService.getDifferenceCount(linkInfo!.subscriptionId);
+                            hasDifferences = differenceCount > 0;
+
+                            if (hasDifferences) {
+                                // Add difference count to description with warning indicator
+                                descriptionParts.push(`⚠ ${differenceCount} diff${differenceCount !== 1 ? 's' : ''}`);
+                            } else {
+                                // Show synced status
+                                descriptionParts.push('✓ synced');
+                            }
+                        } catch (error) {
+                            console.warn(`MSSQL Git: Failed to fetch subscription for ${databaseName}:`, error);
+                            // Continue without difference info
+                        }
+                    }
+
+                    // Return context contribution with branch name and difference count
+                    return {
+                        contextProperties: {
+                            gitLinked: true,
+                            hasSchemaDiff: hasDifferences,
+                            schemaDiffCount: String(differenceCount), // Convert to string for context property type
+                        },
+                        description: descriptionParts.join(' | '),
+                    };
                 }
 
-                const databaseName = node.metadata?.name || "";
+                // Handle scriptable object nodes (Table, View, StoredProcedure, etc.)
+                if (decorationService?.isScriptableObjectType(node.nodeType)) {
+                    const linkInfo = decorationService.getGitLinkInfoForNode(node);
 
-                // Get git link info for this database
-                const linkInfo = gitStatusService!.getGitLinkInfo(
-                    node.connectionProfile,
-                    databaseName,
-                );
+                    // If parent database is not linked, skip
+                    if (!linkInfo?.subscriptionId) {
+                        return undefined;
+                    }
 
-                const isLinked = linkInfo !== undefined;
+                    // Get the qualified object name
+                    const qualifiedName = decorationService.getQualifiedObjectName(node.metadata || {});
 
-                console.log(`MSSQL Git: Database '${databaseName}' gitLinked=${isLinked}, branch=${linkInfo?.branchName || 'N/A'}`);
+                    // Create a resource URI for file decorations
+                    const server = node.connectionProfile?.server || 'unknown';
+                    const database = decorationService.getDatabaseNameFromNode(node) || 'unknown';
+                    const objectType = node.nodeType;
+                    const schema = node.metadata?.schema || 'dbo';
+                    const objectName = node.metadata?.name || '';
+                    const resourceUri = SchemaDecorationProvider.createUri(server, database, objectType, schema, objectName);
 
-                // Return context contribution with branch name as description
-                // Using git branch icon (⎇) to indicate git-linked database
-                return {
-                    contextProperties: {
-                        gitLinked: isLinked,
-                    },
-                    description: isLinked ? `⎇ ${linkInfo!.branchName}` : undefined,
-                };
+                    console.log(`MSSQL Git: Checking object '${qualifiedName}' (type=${node.nodeType}) for differences`);
+
+                    try {
+                        const difference = await decorationService.getObjectDifference(
+                            linkInfo.subscriptionId,
+                            qualifiedName,
+                        );
+
+                        if (difference) {
+                            // Map action to display text
+                            const actionText = difference.action === 'add' ? 'Added'
+                                : difference.action === 'delete' ? 'Deleted'
+                                : 'Modified';
+
+                            console.log(`MSSQL Git: Object '${qualifiedName}' has difference: ${actionText}`);
+
+                            // Set decoration in the provider for Git-style colors
+                            if (schemaDecorationProvider) {
+                                schemaDecorationProvider.setDecoration(resourceUri, difference.action);
+                            }
+
+                            return {
+                                contextProperties: {
+                                    gitLinked: true,
+                                    hasSchemaDiff: true,
+                                    diffAction: difference.action,
+                                },
+                                description: `${actionText}`,
+                                resourceUri: resourceUri,
+                            };
+                        } else {
+                            // Clear any existing decoration for this object
+                            if (schemaDecorationProvider) {
+                                schemaDecorationProvider.clearDecoration(resourceUri);
+                            }
+                        }
+                    } catch (error) {
+                        console.warn(`MSSQL Git: Failed to check object difference for ${qualifiedName}:`, error);
+                    }
+
+                    // Object is in a linked database but has no differences
+                    return {
+                        contextProperties: {
+                            gitLinked: true,
+                            hasSchemaDiff: false,
+                        },
+                        description: undefined, // No decoration for synced objects
+                        resourceUri: resourceUri, // Still provide URI so decoration can be cleared
+                    };
+                }
+
+                // For other node types, return undefined (no contribution)
+                return undefined;
             },
         });
     console.log("MSSQL Git: Context contributor registered successfully");
@@ -248,3 +369,16 @@ export function getGitStatusService(): GitStatusService | undefined {
     return gitStatusService;
 }
 
+/**
+ * Get the decoration service for cache management
+ */
+export function getDecorationService(): ObjectExplorerDecorationService | undefined {
+    return decorationService;
+}
+
+/**
+ * Get the schema decoration provider for file decorations
+ */
+export function getSchemaDecorationProvider(): SchemaDecorationProvider | undefined {
+    return schemaDecorationProvider;
+}

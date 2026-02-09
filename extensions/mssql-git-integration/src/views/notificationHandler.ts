@@ -7,6 +7,7 @@ import * as vscode from 'vscode';
 import { ComparisonServiceSignalR } from '../services/signalRClient';
 import { SubscriptionTreeProvider } from './subscriptionTreeProvider';
 import { SchemaSyncStatusBar } from './statusBar';
+import { getDecorationService } from '../extension';
 
 /**
  * Handles notifications from the SQL Comparison Service and updates UI components
@@ -90,6 +91,12 @@ export class NotificationHandler implements vscode.Disposable {
     }
 
     private handleDifferencesDetected(subscriptionId: string, differenceCount: number): void {
+        // Invalidate decoration cache for this subscription
+        const decorationService = getDecorationService();
+        if (decorationService) {
+            decorationService.invalidateCache(subscriptionId);
+        }
+
         // Update status bar
         this.statusBar.setDifferenceCount(differenceCount);
 
@@ -123,6 +130,12 @@ export class NotificationHandler implements vscode.Disposable {
         differenceCount: number,
         durationMs: number
     ): void {
+        // Invalidate decoration cache for this subscription
+        const decorationService = getDecorationService();
+        if (decorationService) {
+            decorationService.invalidateCache(subscriptionId);
+        }
+
         this.statusBar.setDifferenceCount(differenceCount);
         void this.treeProvider.refreshSubscription(subscriptionId);
 
