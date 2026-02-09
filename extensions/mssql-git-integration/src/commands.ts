@@ -595,11 +595,11 @@ async function unlinkDatabaseFromGitBranch(
 async function compareDatabaseToRepo(
     node: vscodeMssql.ITreeNodeInfo,
     gitStatusService: GitStatusService,
-    comparisonClient?: SqlComparisonClient,
+    _comparisonClient?: SqlComparisonClient,
 ): Promise<void> {
     const databaseName = node.metadata?.name || node.label?.toString() || "";
 
-    // Get link info to find subscription ID
+    // Get link info to find the local git path
     const linkInfo = gitStatusService.getGitLinkInfo(node.connectionProfile, databaseName);
     if (!linkInfo) {
         void vscode.window.showWarningMessage(
@@ -608,49 +608,71 @@ async function compareDatabaseToRepo(
         return;
     }
 
-    const subscriptionId = linkInfo.subscriptionId;
-    if (!subscriptionId || !comparisonClient) {
+    // Find the SQL project file in the local git path
+    const localGitPath = linkInfo.localGitPath;
+    if (!localGitPath) {
         void vscode.window.showWarningMessage(
-            `Schema sync is not enabled for "${databaseName}". SQL Comparison Service may not be available.`,
+            `No local git path configured for "${databaseName}".`,
         );
         return;
     }
 
-    // Trigger comparison via the service
-    await vscode.window.withProgress(
-        {
-            location: vscode.ProgressLocation.Notification,
-            title: `Comparing "${databaseName}" to repository...`,
-            cancellable: false,
-        },
-        async () => {
-            try {
-                const result = await comparisonClient.triggerComparison(subscriptionId);
-                if (result.status === "completed") {
-                    void vscode.window.showInformationMessage(
-                        `Comparison complete: ${result.differenceCount} difference(s) found.`,
-                    );
-                } else if (result.status === "failed") {
-                    void vscode.window.showErrorMessage(
-                        `Comparison failed: ${result.errorMessage || "Unknown error"}`,
-                    );
-                } else {
-                    void vscode.window.showInformationMessage(
-                        `Comparison status: ${result.status}`,
-                    );
-                }
-            } catch (error) {
-                if (error instanceof ServiceUnavailableError) {
-                    void vscode.window.showWarningMessage(
-                        "SQL Comparison Service is not available. Please ensure the service is running.",
-                    );
-                } else {
-                    const errorMessage = error instanceof Error ? error.message : String(error);
-                    void vscode.window.showErrorMessage(`Failed to compare: ${errorMessage}`);
-                }
+    // Search for .sqlproj files in the local git path
+    let sqlProjPath: string | undefined;
+    try {
+        const sqlProjFiles = await vscode.workspace.findFiles(
+            new vscode.RelativePattern(localGitPath, "**/*.sqlproj"),
+            "**/node_modules/**",
+            10, // Limit to 10 results
+        );
+
+        if (sqlProjFiles.length === 0) {
+            void vscode.window.showWarningMessage(
+                `No SQL project (.sqlproj) found in "${localGitPath}". Please ensure the repository contains a SQL project.`,
+            );
+            return;
+        } else if (sqlProjFiles.length === 1) {
+            sqlProjPath = sqlProjFiles[0].fsPath;
+        } else {
+            // Multiple projects found - let user choose
+            const items = sqlProjFiles.map((uri) => ({
+                label: path.basename(uri.fsPath),
+                description: uri.fsPath,
+                uri: uri,
+            }));
+
+            const selected = await vscode.window.showQuickPick(items, {
+                placeHolder: "Select the SQL project to compare against",
+                title: "Multiple SQL Projects Found",
+            });
+
+            if (!selected) {
+                return; // User cancelled
             }
-        },
-    );
+            sqlProjPath = selected.uri.fsPath;
+        }
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        void vscode.window.showErrorMessage(`Failed to find SQL project: ${errorMessage}`);
+        return;
+    }
+
+    // Open the mssql Schema Compare with the database as source and SQL project as target
+    // The mssql.schemaCompare command accepts:
+    // - sourceNode: TreeNodeInfo (database node) or SchemaCompareEndpointInfo or string (path)
+    // - targetNode: TreeNodeInfo or SchemaCompareEndpointInfo or string (path to .sqlproj or .dacpac)
+    // - runComparison: boolean - whether to auto-run the comparison
+    try {
+        await vscode.commands.executeCommand(
+            "mssql.schemaCompare",
+            node,           // Source: database node
+            sqlProjPath,    // Target: path to SQL project
+            true,           // Auto-run comparison
+        );
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        void vscode.window.showErrorMessage(`Failed to open Schema Compare: ${errorMessage}`);
+    }
 }
 
 async function refreshLocalCache(
