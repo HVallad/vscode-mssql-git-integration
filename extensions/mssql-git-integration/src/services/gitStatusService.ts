@@ -25,6 +25,8 @@ export interface GitLinkInfo {
     branchName: string;
     /** Path to local database schema cache directory (for future comparison feature) */
     localCachePath?: string;
+    /** SQL Comparison Service subscription ID (if schema sync is enabled) */
+    subscriptionId?: string;
     /** Timestamp when the link was created */
     linkedAt: string;
 }
@@ -105,6 +107,7 @@ export class GitStatusService {
         gitRepoUrl: string,
         localGitPath: string,
         branchName: string,
+        subscriptionId?: string,
         localCachePath?: string,
     ): Promise<void> {
         const key = this._getDatabaseKey(connectionProfile, databaseName);
@@ -114,6 +117,7 @@ export class GitStatusService {
             gitRepoUrl,
             localGitPath,
             branchName,
+            subscriptionId,
             localCachePath,
             linkedAt: new Date().toISOString(),
         };

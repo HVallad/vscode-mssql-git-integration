@@ -28,17 +28,108 @@
         "build": "yarn build:extension",
         "watch": "tsc -watch -p tsconfig.extension.json --preserveWatchOutput",
         "lint": "eslint ./src",
-        "test": "yarn build && node ./out/test/runTest.js"
+        "test": "yarn build && vscode-test"
     },
     "devDependencies": {
+        "@types/chai": "^5.2.3",
+        "@types/mocha": "^10.0.10",
         "@types/node": "^20.0.0",
+        "@types/sinon": "^21.0.0",
         "@types/vscode": "^1.98.0",
-        "typescript": "^5.0.0"
+        "@typescript-eslint/eslint-plugin": "^8.54.0",
+        "@typescript-eslint/parser": "^8.54.0",
+        "@vscode/test-cli": "^0.0.12",
+        "@vscode/test-electron": "^2.5.2",
+        "chai": "^6.2.2",
+        "eslint": "^10.0.0",
+        "glob": "^13.0.1",
+        "mocha": "^11.7.5",
+        "sinon": "^21.0.1",
+        "typescript": "^5.0.0",
+        "typescript-eslint": "^8.54.0"
     },
     "dependencies": {
+        "@microsoft/signalr": "^8.0.0",
         "simple-git": "^3.22.0"
     },
     "contributes": {
+        "configuration": {
+            "title": "MSSQL Git Integration",
+            "properties": {
+                "mssqlGit.comparisonService.endpoint": {
+                    "type": "string",
+                    "default": "",
+                    "description": "URL of the SQL Comparison Service (e.g., http://localhost:5050). Leave empty for auto-discovery."
+                },
+                "mssqlGit.comparisonService.autoConnect": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Automatically connect to SQL Comparison Service when extension activates."
+                },
+                "mssqlGit.comparisonService.enableNotifications": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable real-time notifications via SignalR when differences are detected."
+                },
+                "mssqlGit.comparison.includeTables": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Include tables in schema comparison."
+                },
+                "mssqlGit.comparison.includeViews": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Include views in schema comparison."
+                },
+                "mssqlGit.comparison.includeStoredProcedures": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Include stored procedures in schema comparison."
+                },
+                "mssqlGit.comparison.includeFunctions": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Include functions in schema comparison."
+                },
+                "mssqlGit.comparison.includeTriggers": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Include triggers in schema comparison."
+                },
+                "mssqlGit.comparison.ignoreWhitespace": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Ignore whitespace differences in schema comparison."
+                },
+                "mssqlGit.comparison.ignoreComments": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Ignore comments in schema comparison."
+                },
+                "mssqlGit.comparison.ignoreColumnOrder": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Ignore column order differences in tables."
+                },
+                "mssqlGit.projectFolder.defaultStructure": {
+                    "type": "string",
+                    "default": "by-schema-and-type",
+                    "enum": [
+                        "flat",
+                        "by-type",
+                        "by-schema",
+                        "by-schema-and-type"
+                    ],
+                    "enumDescriptions": [
+                        "All SQL files in root folder",
+                        "Organized by object type (Tables, Views, etc.)",
+                        "Organized by schema (dbo, etc.)",
+                        "Organized by schema, then by object type"
+                    ],
+                    "description": "Default folder structure for SQL project files."
+                }
+            }
+        },
         "commands": [
             {
                 "command": "mssql-git.linkDatabaseToGitBranch",
@@ -59,9 +150,58 @@
                 "command": "mssql-git.refreshLocalCache",
                 "title": "Refresh Local Cache",
                 "category": "MSSQL Git"
+            },
+            {
+                "command": "mssql-git.refreshSubscriptions",
+                "title": "Refresh Schema Sync",
+                "icon": "$(refresh)",
+                "category": "MSSQL Git"
+            },
+            {
+                "command": "mssql-git.showSubscriptions",
+                "title": "Show Schema Sync View",
+                "category": "MSSQL Git"
+            },
+            {
+                "command": "mssql-git.viewDiff",
+                "title": "View Schema Difference",
+                "icon": "$(diff)",
+                "category": "MSSQL Git"
+            },
+            {
+                "command": "mssql-git.triggerComparison",
+                "title": "Trigger Schema Comparison",
+                "icon": "$(sync)",
+                "category": "MSSQL Git"
             }
         ],
+        "views": {
+            "mssql-git-container": [
+                {
+                    "id": "mssql-git.schemaSync",
+                    "name": "Schema Sync",
+                    "icon": "$(database)",
+                    "contextualTitle": "SQL Schema Sync"
+                }
+            ]
+        },
+        "viewsContainers": {
+            "activitybar": [
+                {
+                    "id": "mssql-git-container",
+                    "title": "SQL Schema Sync",
+                    "icon": "$(database)"
+                }
+            ]
+        },
         "menus": {
+            "view/title": [
+                {
+                    "command": "mssql-git.refreshSubscriptions",
+                    "when": "view == mssql-git.schemaSync",
+                    "group": "navigation"
+                }
+            ],
             "view/item/context": [
                 {
                     "command": "mssql-git.linkDatabaseToGitBranch",
@@ -82,9 +222,18 @@
                     "command": "mssql-git.refreshLocalCache",
                     "when": "view == objectExplorer && viewItem =~ /type=Database/",
                     "group": "9_MSSQL_localCache@1"
+                },
+                {
+                    "command": "mssql-git.viewDiff",
+                    "when": "view == mssql-git.schemaSync && viewItem == difference",
+                    "group": "inline"
+                },
+                {
+                    "command": "mssql-git.triggerComparison",
+                    "when": "view == mssql-git.schemaSync && viewItem == subscription",
+                    "group": "inline"
                 }
             ]
         }
     }
 }
-
