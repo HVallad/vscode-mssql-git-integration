@@ -273,5 +273,8 @@
     "mssql.openChangelog": "Open Changelog",
     "mssql.openAzureDataStudioMigration": "Migrate from Azure Data Studio",
     "mssql.showChangelogOnUpdate": "Show changelog after extension updates",
-    "mssql.backupDatabase": "Backup Database (Preview)"
+    "mssql.backupDatabase": "Backup Database (Preview)",
+    "mssql.schemaCompare.cacheSettings.description": "Cache schema compare settings so they persist across sessions. When enabled, your schema compare options will be remembered and applied to new comparisons.",
+    "mssql.schemaCompare.options.description": "Cached schema compare options. These are automatically saved when you change settings in the Schema Compare UI.",
+    "mssql.schemaCompare.excludedObjectTypes.description": "List of object types to exclude from schema comparison. These are automatically saved when you change settings in the Schema Compare UI."
 }

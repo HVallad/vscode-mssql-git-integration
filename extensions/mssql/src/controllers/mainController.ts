@@ -37,6 +37,7 @@ import { DacFxService } from "../services/dacFxService";
 import { SqlProjectsService } from "../services/sqlProjectsService";
 import { SqlPackageService } from "../services/sqlPackageService";
 import { SchemaCompareService } from "../services/schemaCompareService";
+import { SchemaCompareSettingsService } from "../services/schemaCompareSettingsService";
 import { SqlTasksService } from "../services/sqlTasksService";
 import { ObjectManagementService } from "../services/objectManagementService";
 import StatusView from "../views/statusView";
@@ -135,6 +136,7 @@ export default class MainController implements vscode.Disposable {
     private _queryHistoryRegistered: boolean = false;
     private _availableCommands: string[] | undefined;
     private _logger: Logger;
+    private _schemaCompareSettingsService = new SchemaCompareSettingsService();
 
     public sqlTasksService: SqlTasksService;
     public dacFxService: DacFxService;
@@ -1732,6 +1734,8 @@ export default class MainController implements vscode.Disposable {
 
         if (this.isRichExperiencesEnabled) {
             // Register the command as async and forward all arguments
+            // Supports: [sourceNode, targetNode, runComparison]
+            // Cached settings are automatically loaded from VS Code configuration
             this._context.subscriptions.push(
                 vscode.commands.registerCommand(
                     Constants.cmdSchemaCompare,
@@ -2899,6 +2903,7 @@ export default class MainController implements vscode.Disposable {
      *   - [sourceNode, undefined] when invoked from a project tree node/ server / database node,
      *   - [] when invoked from the command palette.
      * This method normalizes the arguments and launches the Schema Compare UI.
+     * Cached schema compare settings from VS Code configuration are automatically applied.
      */
     public async onSchemaCompare(
         sourceNode?: ConnectionNode | TreeNodeInfo | SchemaCompareEndpointInfo | string | undefined,
@@ -2908,6 +2913,12 @@ export default class MainController implements vscode.Disposable {
         const schemaCompareOptionsResult = await this.dacFxService.getDeploymentOptions(
             DeploymentScenario.SchemaCompare,
         );
+
+        // Apply cached settings from VS Code configuration if caching is enabled
+        this._schemaCompareSettingsService.applyCachedSettings(
+            schemaCompareOptionsResult.defaultDeploymentOptions,
+        );
+
         const schemaCompareWebView = new SchemaCompareWebViewController(
             this._context,
             this._vscodeWrapper,

@@ -54,6 +54,7 @@ import {
 import { getErrorMessage } from "../utils/utils";
 import { ConnectionNode } from "../objectExplorer/nodes/connectionNode";
 import { UserSurvey } from "../nps/userSurvey";
+import { SchemaCompareSettingsService } from "../services/schemaCompareSettingsService";
 
 const SCHEMA_COMPARE_VIEW_ID = "schemaCompare";
 
@@ -64,6 +65,7 @@ export class SchemaCompareWebViewController extends ReactWebviewPanelController<
     private static readonly SQL_DATABASE_PROJECTS_EXTENSION_ID =
         "ms-mssql.sql-database-projects-vscode";
     private operationId: string;
+    private readonly schemaCompareSettingsService = new SchemaCompareSettingsService();
 
     constructor(
         context: vscode.ExtensionContext,
@@ -846,6 +848,15 @@ export class SchemaCompareWebViewController extends ReactWebviewPanelController<
             state.intermediaryOptionsResult = undefined;
 
             this.updateState(state);
+
+            // Save schema compare settings to VS Code configuration for persistence
+            void this.schemaCompareSettingsService
+                .saveFromDeploymentOptions(
+                    state.defaultDeploymentOptionsResult.defaultDeploymentOptions,
+                )
+                .catch((error) => {
+                    console.error("MSSQL: Failed to save schema compare settings:", error);
+                });
 
             const yesItem: vscode.MessageItem = {
                 title: locConstants.SchemaCompare.Yes,

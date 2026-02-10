@@ -127,6 +127,27 @@
                         "Organized by schema, then by object type"
                     ],
                     "description": "Default folder structure for SQL project files."
+                },
+                "mssqlGit.schemaCompare.cacheSettings": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Cache schema compare settings so they persist across sessions. When enabled, your schema compare options will be remembered and applied to new comparisons."
+                },
+                "mssqlGit.schemaCompare.options": {
+                    "type": "object",
+                    "default": {},
+                    "description": "Cached schema compare options. These are automatically saved when you change settings in the Schema Compare UI.",
+                    "additionalProperties": {
+                        "type": "boolean"
+                    }
+                },
+                "mssqlGit.schemaCompare.excludedObjectTypes": {
+                    "type": "array",
+                    "default": [],
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "List of object types to exclude from schema comparison. These are automatically saved when you change settings in the Schema Compare UI."
                 }
             }
         },
@@ -172,6 +193,11 @@
                 "command": "mssql-git.triggerComparison",
                 "title": "Trigger Schema Comparison",
                 "icon": "$(sync)",
+                "category": "MSSQL Git"
+            },
+            {
+                "command": "mssql-git.clearCachedSchemaCompareSettings",
+                "title": "Clear Cached Schema Compare Settings",
                 "category": "MSSQL Git"
             }
         ],

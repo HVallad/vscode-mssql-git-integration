@@ -5,4 +5,5 @@
 
 export * from './comparisonService';
 export * from './serviceEvents';
+export * from './schemaCompareSettings';
 

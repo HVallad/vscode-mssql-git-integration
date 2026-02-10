@@ -10,6 +10,7 @@ import { ServiceDiscovery } from "./services/serviceDiscovery";
 import { SqlComparisonClient } from "./services/sqlComparisonClient";
 import { ComparisonServiceSignalR } from "./services/signalRClient";
 import { ObjectExplorerDecorationService } from "./services/objectExplorerDecorationService";
+import { SchemaCompareSettingsService } from "./services/schemaCompareSettingsService";
 import { registerCommands } from "./commands";
 import {
     SubscriptionTreeProvider,
@@ -32,6 +33,7 @@ let signalRClient: ComparisonServiceSignalR | undefined;
 let statusBar: SchemaSyncStatusBar | undefined;
 let decorationService: ObjectExplorerDecorationService | undefined;
 let schemaDecorationProvider: SchemaDecorationProvider | undefined;
+let schemaCompareSettingsService: SchemaCompareSettingsService | undefined;
 
 export async function activate(
     context: vscode.ExtensionContext,
@@ -60,6 +62,7 @@ export async function activate(
 
     // Initialize core services
     gitStatusService = new GitStatusService(context);
+    schemaCompareSettingsService = new SchemaCompareSettingsService(context);
 
     // Initialize SQL Comparison Service integration (Method B: Separate Installation)
     // The service must be installed and running independently
@@ -316,6 +319,43 @@ export async function activate(
         );
     }
 
+    // Register command to clear cached schema compare settings
+    context.subscriptions.push(
+        vscode.commands.registerCommand("mssql-git.clearCachedSchemaCompareSettings", async () => {
+            if (schemaCompareSettingsService) {
+                await schemaCompareSettingsService.clearSettings();
+                void vscode.window.showInformationMessage(
+                    "Cached schema compare settings have been cleared. New comparisons will use default settings."
+                );
+            }
+        })
+    );
+
+    // Register listener for schema compare options confirmed event
+    // This allows us to cache settings when the user confirms options in schema compare
+    // Using mssql-git namespace since we're in the mssql-git-integration extension
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            "mssql-git.schemaCompare.optionsConfirmed",
+            async (deploymentOptions: vscodeMssql.DeploymentOptions) => {
+                console.log("MSSQL Git: optionsConfirmed command received");
+                console.log("MSSQL Git: schemaCompareSettingsService exists:", !!schemaCompareSettingsService);
+                console.log("MSSQL Git: deploymentOptions exists:", !!deploymentOptions);
+                if (schemaCompareSettingsService && deploymentOptions) {
+                    try {
+                        await schemaCompareSettingsService.saveFromDeploymentOptions(deploymentOptions);
+                        console.log("MSSQL Git: Schema compare settings cached from confirmed options");
+                    } catch (error) {
+                        console.error("MSSQL Git: Failed to cache schema compare settings:", error);
+                    }
+                } else {
+                    console.log("MSSQL Git: Cannot cache - missing service or options");
+                }
+            }
+        )
+    );
+    console.log("MSSQL Git: Registered mssql-git.schemaCompare.optionsConfirmed command");
+
     // Subscribe to Object Explorer events for debugging
     const selectDisposable = mssqlApi.objectExplorer.onDidSelectNode(
         (node: vscodeMssql.ITreeNodeInfo) => {
@@ -381,4 +421,11 @@ export function getDecorationService(): ObjectExplorerDecorationService | undefi
  */
 export function getSchemaDecorationProvider(): SchemaDecorationProvider | undefined {
     return schemaDecorationProvider;
+}
+
+/**
+ * Get the schema compare settings service for caching settings
+ */
+export function getSchemaCompareSettingsService(): SchemaCompareSettingsService | undefined {
+    return schemaCompareSettingsService;
 }

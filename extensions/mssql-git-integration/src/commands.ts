@@ -14,6 +14,7 @@ import {
     showFolderConfigurationWizard,
 } from "./ui/configurationWizard";
 import simpleGit, { SimpleGit } from "simple-git";
+import { getSchemaCompareSettingsService } from "./extension";
 
 // Git URL patterns for validation
 const GIT_HTTPS_REGEX = /^https?:\/\/[^\s/$.?#].[^\s]*\.git$/i;
@@ -657,18 +658,35 @@ async function compareDatabaseToRepo(
         return;
     }
 
+    // Get cached schema compare settings if available
+    const settingsService = getSchemaCompareSettingsService();
+    const cachedDeploymentOptions = settingsService?.buildDeploymentOptionsFromCache();
+
     // Open the mssql Schema Compare with the database as source and SQL project as target
     // The mssql.schemaCompare command accepts:
     // - sourceNode: TreeNodeInfo (database node) or SchemaCompareEndpointInfo or string (path)
     // - targetNode: TreeNodeInfo or SchemaCompareEndpointInfo or string (path to .sqlproj or .dacpac)
     // - runComparison: boolean - whether to auto-run the comparison
+    // - cachedDeploymentOptions: DeploymentOptions - optional cached settings to apply
     try {
-        await vscode.commands.executeCommand(
-            "mssql.schemaCompare",
-            node,           // Source: database node
-            sqlProjPath,    // Target: path to SQL project
-            true,           // Auto-run comparison
-        );
+        if (cachedDeploymentOptions) {
+            console.log("MSSQL Git: Launching schema compare with cached settings");
+            await vscode.commands.executeCommand(
+                "mssql.schemaCompare",
+                node,                       // Source: database node
+                sqlProjPath,                // Target: path to SQL project
+                true,                       // Auto-run comparison
+                cachedDeploymentOptions,    // Cached deployment options
+            );
+        } else {
+            console.log("MSSQL Git: Launching schema compare with default settings");
+            await vscode.commands.executeCommand(
+                "mssql.schemaCompare",
+                node,           // Source: database node
+                sqlProjPath,    // Target: path to SQL project
+                true,           // Auto-run comparison
+            );
+        }
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         void vscode.window.showErrorMessage(`Failed to open Schema Compare: ${errorMessage}`);
